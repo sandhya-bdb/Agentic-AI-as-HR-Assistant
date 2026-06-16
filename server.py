@@ -9,6 +9,7 @@ load_dotenv()
 
 import os
 from utils import seed_services
+from rag import retrieve, format_context
 
 employee_manager = EmployeeManager()
 meeting_manager = MeetingManager()
@@ -173,6 +174,26 @@ def get_leave_history(emp_id: str) -> str:
     :return: Leave history message
     """
     return leave_manager.get_leave_history(emp_id)
+
+
+@mcp.tool()
+def answer_hr_policy_question(question: str) -> str:
+    """
+    Answer a question about AtliqAI HR policies using the official HR policy document.
+    Use this tool when an employee asks about leave policies, work-from-home rules,
+    probation period, onboarding formalities, code of conduct, or any other HR policy topic.
+    :param question: The HR policy question from the employee
+    :return: Answer grounded in the HR policy document with section references
+    """
+    results = retrieve(question, top_k=3)
+    if not results:
+        return "I could not find relevant information in the HR policy document."
+    context = format_context(results)
+    return (
+        f"Based on the AtliqAI HR Policy document:\n\n"
+        f"{context}\n\n"
+        f"(Retrieved from sections: {', '.join(' > '.join(r['headings']) for r in results if r['headings'])})"
+    )
 
 
 @mcp.prompt("onboard_new_employee")
